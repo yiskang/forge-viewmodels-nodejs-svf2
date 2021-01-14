@@ -19,6 +19,8 @@
 const fs = require('fs');
 const express = require('express');
 const multer  = require('multer');
+const async = require('async');
+const guid = require('guid');
 const { BucketsApi, ObjectsApi, PostBucketsPayload } = require('forge-apis');
 
 const { getClient, getInternalToken } = require('./common/oauth');
@@ -89,22 +91,151 @@ router.post('/buckets', async (req, res, next) => {
     }
 });
 
+/**
+ * Upload a File to previously created bucket.
+ * Uses the oAuth2TwoLegged object that you retrieved previously.
+ * @param bucketKey
+ * @param filePath
+ * @param fileName
+ * @returns {Promise}
+ */
+const uploadFileChunk = function(bucketKey, filePath, fileName, oauth2client, credentials) {
+    return new Promise(function(resolve, reject) {
+        const objectsApi = new ObjectsApi();
+
+        fs.readFile(filePath, function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                let chunkSize = 5 * 1024 * 1024
+                let nbChunks = Math.ceil(data.length / chunkSize)
+                let chunksMap = Array.from({
+                    length: nbChunks
+                }, (e, i) => i)
+
+                // generates uniques session ID
+                let sessionId = guid.create();
+                let uploadChuckArray = [];
+
+                let range;
+                let readStream;
+
+                // prepare the upload tasks
+                chunksMap.map((chunkIdx) => {
+                    let start = chunkIdx * chunkSize
+                    let end = Math.min(data.length, (chunkIdx + 1) * chunkSize) - 1;
+
+                    if (chunkIdx == (nbChunks - 1)) {
+                        chunkSize = data.length - start; // Change the final content-length chunk since it will have a smaller number of bytes on last chunk
+                    }
+
+                    range = `bytes ${start}-${end}/${data.length}`
+                    readStream = fs.createReadStream(filePath, {
+                        start,
+                        end
+                    })
+
+                    chunksMap.forEach(function(chunk) {
+                        uploadChuckArray.push(function(callback) {
+                            console.log('**** Uploading Chunks ***** with Range ', range);
+
+                            // Upload an object chunks to bucket using [ObjectsApi](https://github.com/Autodesk-Forge/forge-api-nodejs-client/blob/master/docs/ObjectsApi.md#uploadchunk).
+                            objectsApi.uploadChunk(bucketKey, fileName, chunkSize, range, sessionId.value, readStream, {}, oauth2client, credentials)
+                                .then(callback)
+                                .catch(callback)
+                        })
+                    });
+
+                    async.waterfall(uploadChuckArray, function(err, result) {
+                        if (err.statusCode == 200) {
+                            resolve(err)
+                        }
+                    })
+
+
+                });
+            }
+        });
+    })
+}
+
+/**
+ * Upload a File to previously created bucket.
+ * Uses the oAuth2TwoLegged object that you retrieved previously.
+ * @param bucketKey
+ * @param filePath
+ * @param fileName
+ * @returns {Promise}
+ */
+const uploadFile = function(bucketKey, filePath, fileName, oauth2client, credentials) {
+    return new Promise(function(resolve, reject) {
+        const objectsApi = new ObjectsApi();
+
+        fs.readFile(filePath, function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                // Upload an object to bucket using [ObjectsApi](https://github.com/Autodesk-Forge/forge-api-nodejs-client/blob/master/docs/ObjectsApi.md#uploadObject).
+                objectsApi.uploadObject(bucketKey, fileName, data.length, data, {}, oauth2client, credentials).then(
+                    function(res) {
+                        resolve(res);
+                    },
+                    function(err) {
+                        reject(err);
+                    }
+                )
+            }
+        });
+    });
+};
+
+/**
+ * Checker for Size of File, depending on size will run resumable upload or upload as a whole.
+ * Uses the oAuth2TwoLegged object that you retrieved previously.
+ * @param bucketKey
+ * @param filePath
+ * @param fileName
+ */
+const uploadFileCheck = function(bucketKey, filePath, fileName, oauth2client, credentials) {
+    return new Promise(function(resolve, reject) {
+        fs.readFile(filePath, function(err, data) {
+            if (err) {
+                reject(err);
+            } else {
+                if (data.length < 5242879) { // Less than 5MB files upload process
+                    resolve(uploadFile(bucketKey, filePath, fileName, oauth2client, credentials));
+                } else {
+                    resolve(uploadFileChunk(bucketKey, filePath, fileName, oauth2client, credentials));
+                }
+            }
+        })
+    })
+}
+
+const deleteRawFile = function(path) {
+    return new Promise(function(resolve, reject) {
+        fs.unlink(path, (err) => {
+            if (err) {
+                return reject(err);
+            }
+
+            resolve();
+        })
+    });
+}
+
 // POST /api/forge/oss/objects - uploads new object to given bucket.
 // Request body must be structured as 'form-data' dictionary
 // with the uploaded file under "fileToUpload" key, and the bucket name under "bucketKey".
 router.post('/objects', multer({ dest: 'uploads/' }).single('fileToUpload'), async (req, res, next) => {
-    fs.readFile(req.file.path, async (err, data) => {
-        if (err) {
-            next(err);
-        }
-        try {
-            // Upload an object to bucket using [ObjectsApi](https://github.com/Autodesk-Forge/forge-api-nodejs-client/blob/master/docs/ObjectsApi.md#uploadObject).
-            await new ObjectsApi().uploadObject(req.body.bucketKey, req.file.originalname, data.length, data, {}, req.oauth_client, req.oauth_token);
-            res.status(200).end();
-        } catch(err) {
-            next(err);
-        }
-    });
+    try {
+        const result = await uploadFileCheck(req.body.bucketKey, req.file.path, req.file.originalname, req.oauth_client, req.oauth_token);
+        await deleteRawFile(req.file.path);
+
+        res.status(200).end();
+    } catch(err) {
+        next(err);
+    }
 });
 
 module.exports = router;

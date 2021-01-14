@@ -26,9 +26,18 @@ $(document).ready(function () {
     createNewBucket();
   });
 
+  $('#submitTranslation').click(function () {
+    var treeNode = $('#appBuckets').jstree(true).get_selected(true)[0];
+    submitTranslation(treeNode);
+  });
+
   $('#createBucketModal').on('shown.bs.modal', function () {
     $("#newBucketKey").focus();
-  })
+  });
+
+  $('#CompositeTranslationModal').on('shown.bs.modal', function () {
+    $("#rootDesignFilename").focus();
+  });
 
   $('#hiddenUploadField').change(function () {
     var node = $('#appBuckets').jstree(true).get_selected(true)[0];
@@ -111,22 +120,19 @@ function prepareAppBucketTree() {
     if (data != null && data.node != null && data.node.type == 'object') {
       $("#forgeViewer").empty();
       var urn = data.node.id;
-      getForgeToken(function (access_token) {
-        jQuery.ajax({
-          url: 'https://developer.api.autodesk.com/modelderivative/v2/designdata/' + urn + '/manifest',
-          headers: { 'Authorization': 'Bearer ' + access_token },
-          success: function (res) {
-            if (res.progress === 'success' || res.progress === 'complete') launchViewer(urn);
-            else $("#forgeViewer").html('The translation job still running: ' + res.progress + '. Please try again in a moment.');
-          },
-          error: function (err) {
-            var msgButton = 'This file is not translated yet! ' +
-              '<button class="btn btn-xs btn-info" onclick="translateObject()"><span class="glyphicon glyphicon-eye-open"></span> ' +
-              'Start translation</button>'
-            $("#forgeViewer").html(msgButton);
-          }
-        });
-      })
+      jQuery.ajax({
+        url: '/api/forge/modelderivative/manifest/' + urn,
+        success: function (res) {
+          if (res.progress === 'success' || res.progress === 'complete') launchViewer(urn);
+          else $("#forgeViewer").html('The translation job still running: ' + res.progress + '. Please try again in a moment.');
+        },
+        error: function (err) {
+          var msgButton = 'This file is not translated yet! ' +
+            '<button class="btn btn-xs btn-info" onclick="translateObject()"><span class="glyphicon glyphicon-eye-open"></span> ' +
+            'Start translation</button>'
+          $("#forgeViewer").html(msgButton);
+        }
+      });
     }
   });
 }
@@ -155,14 +161,6 @@ function autodeskCustomMenu(autodeskNode) {
             translateObject(treeNode);
           },
           icon: 'glyphicon glyphicon-eye-open'
-        },
-        translateFileSvf2: {
-          label: "Translate (SVF2)",
-          action: function () {
-            var treeNode = $('#appBuckets').jstree(true).get_selected(true)[0];
-            translateObject(treeNode, true);
-          },
-          icon: 'glyphicon glyphicon-eye-open'
         }
       };
       break;
@@ -175,17 +173,32 @@ function uploadFile() {
   $('#hiddenUploadField').click();
 }
 
-function translateObject(node, isSvf2) {
+function submitTranslation(node) {
   $("#forgeViewer").empty();
   if (node == null) node = $('#appBuckets').jstree(true).get_selected(true)[0];
   var bucketKey = node.parents[0];
   var objectKey = node.id;
+  var rootDesignFilename = $('#rootDesignFilename').val();
+  var isSvf2 = $('#outputFormat :selected').text() === 'SVF2';
+  var xAdsForce = ($('#xAdsForce').is(':checked') === true);
+  var data = { 'bucketKey': bucketKey, 'objectName': objectKey, 'isSvf2': (isSvf2 === true), 'xAdsForce': xAdsForce };
+
+  if((rootDesignFilename && rootDesignFilename.trim() && rootDesignFilename.trim().length > 0)) {
+    data.rootFilename = rootDesignFilename;
+    data.compressedUrn = true;
+  }
+
   jQuery.post({
     url: '/api/forge/modelderivative/jobs',
     contentType: 'application/json',
-    data: JSON.stringify({ 'bucketKey': bucketKey, 'objectName': objectKey, 'isSvf2': (isSvf2 === true) }),
+    data: JSON.stringify(data),
     success: function (res) {
+      $('#CompositeTranslationModal').modal('hide');
       $("#forgeViewer").html('Translation started! Please try again in a moment.');
     },
   });
+}
+
+function translateObject() {
+  $('#CompositeTranslationModal').modal('show');
 }

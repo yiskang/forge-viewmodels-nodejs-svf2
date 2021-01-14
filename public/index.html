@@ -83,6 +83,51 @@
       </div>
     </div>
   </div>
+
+  <!-- Composite model translation -->
+  <div class="modal fade" id="CompositeTranslationModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel">
+    <div class="modal-dialog" role="document">
+      <div class="modal-content">
+        <div class="modal-header">
+          <button type="button" class="close" data-dismiss="modal" aria-label="Cancel">
+            <span aria-hidden="true">&times;</span>
+          </button>
+          <h4 class="modal-title" id="myModalLabel">Composite Translation</h4>
+        </div>
+        <div class="modal-body">
+          <div class="form-horizontal">
+            <div class="form-group">
+              <label for="outputFormat" class="col-sm-3 control-label">Output Format</label>
+              <div class="col-sm-9">
+                <select id="outputFormat" class="form-control">
+                  <option>SVF</option>
+                  <option selected="selected">SVF2</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 0;">
+              <label for="rootDesignFilename" class="col-sm-3 control-label">Root Filename</label>
+              <div class="col-sm-9">
+                <input type="text" id="rootDesignFilename" class="form-control" placeholder="Enter the filename of the root design">
+              </div>
+              <div class="col-sm-12">
+                <span class="help-block" style="margin-bottom: 0; padding-left: 20px;">Enter the filename of the root design for the composite model. If the file is not a composite one, please press "Go ahead, submit translation" button directly.</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <div class="checkbox pull-left">
+            <label>
+              <input type="checkbox" id="xAdsForce"> Replace previous result
+            </label>
+          </div>
+          <button type="button" class="btn btn-default" data-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="submitTranslation">Go ahead, submit translation</button>
+        </div>
+      </div>
+    </div>
+  </div>
 </body>
 
 </html>
