@@ -26,7 +26,7 @@ function launchViewer(urn, viewableId) {
   };
 
   Autodesk.Viewing.Initializer(options, () => {
-    viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'));
+    viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'), {extensions: ['Autodesk.ADN.CameraTweenExt', 'Autodesk.ADN.DrawWalkingPathLinesToolExtension']});
     viewer.start();
     var documentId = 'urn:' + urn;
     Autodesk.Viewing.Document.load(documentId, onDocumentLoadSuccess, onDocumentLoadFailure);
@@ -37,6 +37,8 @@ function launchViewer(urn, viewableId) {
     var viewables = (viewableId ? doc.getRoot().findByGuid(viewableId) : doc.getRoot().getDefaultGeometry(true));
     viewer.loadDocumentNode(doc, viewables, { skipHiddenFragments: false }).then(async (model) => {
       // documented loaded, any action?
+      await doc.downloadAecModelData();
+      await viewer.loadExtension('Autodesk.AEC.LevelsExtension');
     });
   }
 

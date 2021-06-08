@@ -13,10 +13,14 @@
   <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.7/themes/default/style.min.css" />
   <!-- Autodesk Forge Viewer files -->
   <link rel="stylesheet" href="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/style.min.css" type="text/css">
-  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.min.js"></script>
+  <script src="https://developer.api.autodesk.com/modelderivative/v2/viewers/7.*/viewer3D.js"></script>
+
+  <script src="https://unpkg.com/@tweenjs/tween.js@18.6.4/dist/tween.umd.js"></script>
   <!-- this project files -->
   <link href="css/main.css" rel="stylesheet" />
   <script src="js/ForgeTree.js"></script>
+  <script src="js/CameraTweenExt.js"></script>
+  <script src="js/WalkingPathExt.js"></script>
   <script src="js/ForgeViewer.js"></script>
 </head>
 
@@ -36,7 +40,7 @@
   <!-- End of navbar -->
   <div class="container-fluid fill">
     <div class="row fill">
-      <div class="col-sm-4 fill">
+      <div class="col-sm-3 fill">
         <div class="panel panel-default fill">
           <div class="panel-heading" data-toggle="tooltip">
             Buckets &amp; Objects
@@ -50,7 +54,7 @@
           </div>
         </div>
       </div>
-      <div class="col-sm-8 fill">
+      <div class="col-sm-9 fill">
         <div id="forgeViewer"></div>
       </div>
     </div>
