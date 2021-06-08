@@ -20,7 +20,7 @@ var viewer;
 
 function launchViewer(urn, viewableId) {
   var options = {
-    env: 'MD20Prod'  + (atob(urn.replace('urn:', '').replace('_', '/')).indexOf('emea') > -1 ? 'EU' : 'US'),
+    env: 'MD20Prod' + (atob(urn.replace('urn:', '').replace('_', '/')).indexOf('emea') > -1 ? 'EU' : 'US'),
     api: 'D3S',
     getAccessToken: getForgeToken
   };
@@ -34,12 +34,12 @@ function launchViewer(urn, viewableId) {
 
   function onDocumentLoadSuccess(doc) {
     // if a viewableId was specified, load that view, otherwise the default view
-    var viewables = (viewableId ? doc.getRoot().findByGuid(viewableId) : doc.getRoot().getDefaultGeometry());
-    viewer.loadDocumentNode(doc, viewables).then(i => {
+    var viewables = (viewableId ? doc.getRoot().findByGuid(viewableId) : doc.getRoot().getDefaultGeometry(true));
+    viewer.loadDocumentNode(doc, viewables, { skipHiddenFragments: false }).then(async (model) => {
       // documented loaded, any action?
     });
   }
-  
+
   function onDocumentLoadFailure(viewerErrorCode) {
     console.error('onDocumentLoadFailure() - errorCode:' + viewerErrorCode);
   }
