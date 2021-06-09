@@ -108,11 +108,15 @@
         }
 
         clearScene() {
+            this._reset();
+
             if (this.viewer.overlays.hasScene(DrawWalkingPathLinesOverlayName))
                 this.viewer.overlays.clearScene(DrawWalkingPathLinesOverlayName);
         }
 
         removeScene() {
+            this._reset();
+
             if (this.viewer.overlays.hasScene(DrawWalkingPathLinesOverlayName))
                 this.viewer.overlays.removeScene(DrawWalkingPathLinesOverlayName);
         }
@@ -138,15 +142,40 @@
         }
 
         handleMouseMove(event) {
-            if (!this.active || this.currentPoints.length === 0) {
+            if (!this.active) {
                 return false;
             }
             // If we placed some lines already, try to infer the endpoint of the next one based on the current mouse position
             this.snapper.indicator.clearOverlays();
             if (this.snapper.isSnapped()) {
                 const result = this.snapper.getSnapResult();
-                this.intermediatePoint = result.geomVertex;
-                this._updateCurrentMesh();
+
+                const { SnapType } = Autodesk.Viewing.MeasureCommon;
+                switch (result.geomType) {
+                    case SnapType.SNAP_VERTEX:
+                    case SnapType.SNAP_MIDPOINT:
+                    case SnapType.SNAP_INTERSECTION:
+                    case SnapType.SNAP_CIRCLE_CENTER:
+                    case SnapType.RASTER_PIXEL:
+                    case SnapType.SNAP_FACE:
+                    case SnapType.SNAP_CURVEDFACE:
+                        // console.log('Snapped to vertex', result.geomVertex);
+                        this.snapper.indicator.render(); // Show indicator when snapped to a vertex
+                        if (this.currentPoints.length != 0) {
+                            this.intermediatePoint = result.intersectPoint.clone();
+                            this._updateCurrentMesh();
+                        }
+                        break;
+                    case SnapType.SNAP_EDGE:
+                    case SnapType.SNAP_CIRCULARARC:
+                    case SnapType.SNAP_CURVEDEDGE:
+                        // console.log('Snapped to edge', result.geomEdge);
+                        break;
+                    // case SnapType.SNAP_FACE:
+                    // case SnapType.SNAP_CURVEDFACE:
+                    //     // console.log('Snapped to face', result.geomFace);
+                    //     break;
+                }
             }
             return false;
         }
@@ -157,12 +186,29 @@
             }
             if (button === 0 && this.snapper.isSnapped()) {
                 const result = this.snapper.getSnapResult();
-                if (this.currentPoints.length === 0) {
-                    this.currentPoints.push(result.geomVertex.clone());
-                } else {
-                    this.currentPoints.push(this.intermediatePoint);
+
+                const { SnapType } = Autodesk.Viewing.MeasureCommon;
+                switch (result.geomType) {
+                    case SnapType.SNAP_VERTEX:
+                    case SnapType.SNAP_MIDPOINT:
+                    case SnapType.SNAP_INTERSECTION:
+                    case SnapType.SNAP_CIRCLE_CENTER:
+                    case SnapType.RASTER_PIXEL:
+                    case SnapType.SNAP_FACE:
+                    case SnapType.SNAP_CURVEDFACE:
+                        if (this.currentPoints.length === 0) {
+                            this.currentPoints.push(result.intersectPoint.clone());
+                        } else {
+                            this.currentPoints.push(this.intermediatePoint);
+                        }
+                        this._updateCurrentMesh();
+                        break;
+                    default:
+                        // Do not snap to other types
+                        break;
                 }
-                this._updateCurrentMesh();
+
+
                 return true; // Stop the event from going to other tools in the stack
             }
             return false;
@@ -218,6 +264,8 @@
             this.currentMesh = null;
             this.currentPoints = [];
             this.intermediatePoint = null;
+
+            this.snapper.indicator.clearOverlays();
         }
 
         extractLastPathPoints() {
@@ -254,7 +302,7 @@
             this.viewer.setBimWalkToolPopup(false);
 
             this.cameraTweenTool = await this.viewer.loadExtension('Autodesk.ADN.CameraTweenTool');
-            
+
             this.viewer.toolController.registerTool(this.tool);
 
             console.log('WalkingPathToolExtension has been loaded.');
@@ -365,6 +413,8 @@
 
             const walkNavButton = new Autodesk.Viewing.UI.Button('walking-navigation-button');
             walkNavButton.onClick = async () => {
+                this.tool.completeDrawing();
+
                 this.viewer.setActiveNavigationTool('bimwalk');
                 const views = this.pathPointsToViews();
                 this.processTweens(views);

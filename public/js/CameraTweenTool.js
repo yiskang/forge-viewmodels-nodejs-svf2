@@ -98,9 +98,9 @@
         constructor(viewer, options) {
             super(viewer, options);
 
-            this.targetTweenDuration = 2500;
-            this.posTweenDuration = 2500;
-            this.upTweenDuration = 2500;
+            this.targetTweenDuration = 4500;
+            this.posTweenDuration = 4500;
+            this.upTweenDuration = 4500;
 
             this.targetTweenEasing = this.getTweenEasingByName('Linear');
             this.posTweenEasing = this.getTweenEasingByName('Linear');
