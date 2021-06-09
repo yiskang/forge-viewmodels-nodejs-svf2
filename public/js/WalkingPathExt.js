@@ -205,7 +205,7 @@
             geom.addAttribute('index', new THREE.BufferAttribute(new Uint32Array(indices), 1));
             geom.addAttribute('position', new THREE.BufferAttribute(new Float32Array(vertices), 3));
 
-            console.log(vertices);
+            //console.log(vertices);
             geom.isLines = true;
             return new THREE.Mesh(geom, this.lineMaterial);
         }
@@ -241,27 +241,36 @@
         }
     }
 
-    class DrawWalkingPathLinesToolExtension extends Autodesk.Viewing.Extension {
+    class WalkingPathToolExtension extends Autodesk.Viewing.Extension {
         constructor(viewer, options) {
             super(viewer, options);
             this.tool = new DrawWalkingPathLinesTool(viewer);
-            this.button = null;
+            this.cameraTweenTool = null;
         }
 
         async load() {
             await this.viewer.loadExtension('Autodesk.Snapping');
-            this.cameraTweenExt = await this.viewer.loadExtension('Autodesk.ADN.CameraTweenExt');
+            await this.viewer.loadExtension('Autodesk.BimWalk');
             this.viewer.setBimWalkToolPopup(false);
+
+            this.cameraTweenTool = await this.viewer.loadExtension('Autodesk.ADN.CameraTweenTool');
+            
             this.viewer.toolController.registerTool(this.tool);
-            console.log('DrawWalkingPathLinesToolExtension has been loaded.');
+
+            console.log('WalkingPathToolExtension has been loaded.');
             return true;
         }
 
         async unload() {
+            this.viewer.unloadExtension('Autodesk.ADN.CameraTweenTool');
             this.viewer.setBimWalkToolPopup(true);
             this.tool.removeScene();
             this.viewer.toolController.deregisterTool(this.tool);
-            console.log('DrawWalkingPathLinesToolExtension has been unloaded.');
+
+            delete this.cameraTweenTool;
+            this.cameraTweenTool = null;
+
+            console.log('WalkingPathToolExtension has been unloaded.');
             return true;
         }
 
@@ -305,7 +314,7 @@
                 const onTweenExecuted = (event) => {
                     console.log(event);
                     this.viewer.removeEventListener(
-                        Autodesk.ADN.CameraTweenExt.CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT,
+                        Autodesk.ADN.CameraTweenTool.CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT,
                         onTweenExecuted
                     );
 
@@ -313,11 +322,11 @@
                 };
 
                 this.viewer.addEventListener(
-                    Autodesk.ADN.CameraTweenExt.CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT,
+                    Autodesk.ADN.CameraTweenTool.CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT,
                     onTweenExecuted
                 );
 
-                this.cameraTweenExt.tweenCameraTo({ viewport: view });
+                this.cameraTweenTool.tweenCameraTo({ viewport: view });
             });
         }
 
@@ -370,5 +379,5 @@
         }
     }
 
-    Autodesk.Viewing.theExtensionManager.registerExtension('Autodesk.ADN.DrawWalkingPathLinesToolExtension', DrawWalkingPathLinesToolExtension);
+    Autodesk.Viewing.theExtensionManager.registerExtension('Autodesk.ADN.WalkingPathToolExtension', WalkingPathToolExtension);
 })();

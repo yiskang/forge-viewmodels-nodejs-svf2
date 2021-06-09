@@ -94,7 +94,7 @@
 
     const CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT = 'AdnCameraTweenAnimationCompleted';
 
-    class CameraTweenExt extends Autodesk.Viewing.Extension {
+    class CameraTweenToolExtension extends Autodesk.Viewing.Extension {
         constructor(viewer, options) {
             super(viewer, options);
 
@@ -225,16 +225,22 @@
         }
 
         load() {
+            console.log('CameraTweenToolExtension has been loaded.');
             return true;
         }
 
         unload() {
+            if (this.animId) {
+                window.cancelAnimationFrame(this.animId);
+            }
+
+            console.log('CameraTweenToolExtension has been unloaded.');
             return true;
         }
     }
 
-    AutodeskNamespace('Autodesk.ADN.CameraTweenExt');
-    Autodesk.ADN.CameraTweenExt.CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT = CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT;
+    AutodeskNamespace('Autodesk.ADN.CameraTweenTool');
+    Autodesk.ADN.CameraTweenTool.CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT = CAMERA_TWEEN_ANIMATION_COMPLETED_EVENT;
 
-    Autodesk.Viewing.theExtensionManager.registerExtension('Autodesk.ADN.CameraTweenExt', CameraTweenExt);
+    Autodesk.Viewing.theExtensionManager.registerExtension('Autodesk.ADN.CameraTweenTool', CameraTweenToolExtension);
 })();
