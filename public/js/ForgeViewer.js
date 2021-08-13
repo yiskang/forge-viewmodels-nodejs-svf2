@@ -25,6 +25,11 @@ function launchViewer(urn, viewableId) {
     getAccessToken: getForgeToken
   };
 
+  if (LMV_VIEWER_VERSION >= '7.48') {
+    options.env = 'AutodeskProduction2';
+    options.api = 'streamingV2' + (atob(urn.replace('urn:', '').replace('_', '/')).indexOf('emea') > -1 ? '_EU' : '');
+  }
+
   Autodesk.Viewing.Initializer(options, () => {
     viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'));
     viewer.start();
@@ -37,6 +42,10 @@ function launchViewer(urn, viewableId) {
     var viewables = (viewableId ? doc.getRoot().findByGuid(viewableId) : doc.getRoot().getDefaultGeometry(true));
     viewer.loadDocumentNode(doc, viewables, { skipHiddenFragments: false }).then(async (model) => {
       // documented loaded, any action?
+      console.log({
+        'is SVF2?': model.isSVF2(),
+        'LMV version': LMV_VIEWER_VERSION
+      });
     });
   }
 
