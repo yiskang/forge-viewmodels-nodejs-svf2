@@ -64,6 +64,28 @@ $(document).ready(function () {
         break;
     }
   });
+
+  $('#viewModels').click(function () {
+    let treeInst = $('#appBuckets').jstree(true);
+    let selectedNodeIds = $('#appBuckets').jstree('get_selected');
+    let models = [];
+    for (let i = 0; i < selectedNodeIds.length; i++) {
+      let urn = selectedNodeIds[i];
+      let node = treeInst.get_node(`${urn}_anchor`);
+      if (!node || (node.type !== 'object'))
+        continue;
+
+      models.push({
+        name: node.original.text,
+        urn: `urn:${urn}`
+      });
+    }
+
+    if (models.length <= 0 || (models.length !== selectedNodeIds.length))
+      alert('Nothing selected or not all selected nodes are object-typed');
+
+    launchViewer(models);
+  });
 });
 
 function createNewBucket() {
@@ -92,7 +114,7 @@ function prepareAppBucketTree() {
       'data': {
         "url": '/api/forge/oss/buckets',
         "dataType": "json",
-        'multiple': false,
+        'multiple': true,
         "data": function (node) {
           return { "id": node.id };
         }
@@ -112,28 +134,35 @@ function prepareAppBucketTree() {
         'icon': 'glyphicon glyphicon-file'
       }
     },
-    "plugins": ["types", "state", "sort", "contextmenu"],
+    "checkbox": {
+      keep_selected_style: false,
+      three_state: false,
+      deselect_all: true,
+      cascade: 'none'
+    },
+    "plugins": ["types", "checkbox", "state", "sort", "contextmenu"],
     contextmenu: { items: autodeskCustomMenu }
   }).on('loaded.jstree', function () {
     $('#appBuckets').jstree('open_all');
-  }).bind("activate_node.jstree", function (evt, data) {
-    if (data != null && data.node != null && data.node.type == 'object') {
-      $("#forgeViewer").empty();
-      var urn = data.node.id;
-      jQuery.ajax({
-        url: '/api/forge/modelderivative/manifest/' + urn,
-        success: function (res) {
-          if (res.progress === 'success' || res.progress === 'complete') launchViewer(urn);
-          else $("#forgeViewer").html('The translation job still running: ' + res.progress + '. Please try again in a moment.');
-        },
-        error: function (err) {
-          var msgButton = 'This file is not translated yet! ' +
-            '<button class="btn btn-xs btn-info" onclick="translateObject()"><span class="glyphicon glyphicon-eye-open"></span> ' +
-            'Start translation</button>'
-          $("#forgeViewer").html(msgButton);
-        }
-      });
-    }
+    $('#viewModels').show();
+  // }).bind("activate_node.jstree", function (evt, data) {
+  //   if (data != null && data.node != null && data.node.type == 'object') {
+  //     $("#forgeViewer").empty();
+  //     var urn = data.node.id;
+  //     jQuery.ajax({
+  //       url: '/api/forge/modelderivative/manifest/' + urn,
+  //       success: function (res) {
+  //         if (res.progress === 'success' || res.progress === 'complete') launchViewer(urn);
+  //         else $("#forgeViewer").html('The translation job still running: ' + res.progress + '. Please try again in a moment.');
+  //       },
+  //       error: function (err) {
+  //         var msgButton = 'This file is not translated yet! ' +
+  //           '<button class="btn btn-xs btn-info" onclick="translateObject()"><span class="glyphicon glyphicon-eye-open"></span> ' +
+  //           'Start translation</button>'
+  //         $("#forgeViewer").html(msgButton);
+  //       }
+  //     });
+  //   }
   });
 }
 

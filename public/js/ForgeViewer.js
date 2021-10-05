@@ -16,41 +16,52 @@
 // UNINTERRUPTED OR ERROR FREE.
 /////////////////////////////////////////////////////////////////////
 
-var viewer;
+var viewer = null;
 
-function launchViewer(urn, viewableId) {
+function launchViewer(models) {
+  if (viewer != null) {
+    viewer.tearDown()
+    viewer.finish()
+    viewer = null
+    $("#forgeViewer").empty();
+  }
+
+  if (!models || models.length <= 0)
+    return alert('Empty `models` input');
+
   var options = {
-    env: 'MD20Prod' + (atob(urn.replace('urn:', '').replace('_', '/')).indexOf('emea') > -1 ? 'EU' : 'US'),
+    env: 'MD20ProdUS',
     api: 'D3S',
     getAccessToken: getForgeToken
   };
 
+  if (LMV_VIEWER_VERSION >= '7.48') {
+    options.env = 'AutodeskProduction2';
+    options.api = 'streamingV2';
+  }
+
   Autodesk.Viewing.Initializer(options, () => {
-    viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'), {extensions: ['Autodesk.ADN.WalkingPathToolExtension']});
-    viewer.start();
-    var documentId = 'urn:' + urn;
-    Autodesk.Viewing.Document.load(documentId, onDocumentLoadSuccess, onDocumentLoadFailure);
+    viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'));
+
+    //load model one by one in sequence
+    const util = new MultipleModelUtil(viewer);
+    viewer.multipleModelUtil = util;
+
+    // Use ShareCoordinates alignment instead
+    // See https://github.com/yiskang/MultipleModelUtil for details
+    // util.options = {
+    //   alignment: MultipleModelAlignmentType.ShareCoordinates
+    // };
+
+    util.processModels(models);
   });
-
-  function onDocumentLoadSuccess(doc) {
-    // if a viewableId was specified, load that view, otherwise the default view
-    var viewables = (viewableId ? doc.getRoot().findByGuid(viewableId) : doc.getRoot().getDefaultGeometry(true));
-    viewer.loadDocumentNode(doc, viewables, { skipHiddenFragments: false }).then(async (model) => {
-      // documented loaded, any action?
-      await doc.downloadAecModelData();
-      await viewer.loadExtension('Autodesk.AEC.LevelsExtension');
-    });
-  }
-
-  function onDocumentLoadFailure(viewerErrorCode) {
-    console.error('onDocumentLoadFailure() - errorCode:' + viewerErrorCode);
-  }
 }
 
 function getForgeToken(callback) {
-  fetch('/api/forge/oauth/token').then(res => {
-    res.json().then(data => {
-      callback(data.access_token, data.expires_in);
-    });
+  jQuery.ajax({
+    url: '/api/forge/oauth/token',
+    success: function (res) {
+      callback(res.access_token, res.expires_in)
+    }
   });
 }
