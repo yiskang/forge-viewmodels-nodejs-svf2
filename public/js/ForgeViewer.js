@@ -25,6 +25,11 @@ function launchViewer(urn, viewableId) {
     getAccessToken: getForgeToken
   };
 
+  if (LMV_VIEWER_VERSION >= '7.48') {
+    options.env = 'AutodeskProduction2';
+    options.api = 'streamingV2';
+  }
+
   Autodesk.Viewing.Initializer(options, () => {
     viewer = new Autodesk.Viewing.GuiViewer3D(document.getElementById('forgeViewer'), {extensions: ['Autodesk.ADN.WalkingPathToolExtension']});
     viewer.start();
